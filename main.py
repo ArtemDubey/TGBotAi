@@ -1,16 +1,21 @@
 import os
 import requests
+
 from fastapi import FastAPI, Request
 from google import genai
 from dotenv import load_dotenv
+
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 RENDER_URL = os.getenv("RENDER_URL")
+
 # добавити первірки на токени
+
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 app = FastAPI()
+# підключення до Gemini
 genclient = genai.Client(api_key=GEMINI_API_KEY)
 
 
@@ -21,17 +26,23 @@ def default():
 
 @app.post("/webhook")
 async def webhook(request: Request):
+    # Отримання JSON від TG
     data = await request.json()
+    # Об"єкт повідомлення
     msg = data.get("message")
     if msg is None:
         return {"ok": True}
+    # Чат ід , щоб знайти куди відправляти відповіді
     chat_id = msg["chat"]["id"]
+    # Текст повідомлення
     user_text = msg.get("text")
     if user_text is None:
         return {"ok": True}
+
     if user_text == "/start":
         send_msg(chat_id, "Привіт , це локальний АІ")
         return {"ok": True}
+    # Передаємо повідомлення у Gemini та отримуємо відповіді
     try:
         ai_answer = send_q_to_ai(user_text)
         send_msg(chat_id, ai_answer)
@@ -53,13 +64,3 @@ def send_msg(chat_id: int, text: str):
             "chat_id": chat_id,
             "text": text
         }, timeout=30)
-
-
-def send_msg(chat_id:int, text:str):
-    requests.post(
-    f"{TELEGRAM_API}/sendMessage/",
-        json={
-            "chat_is":chat_id,
-            "text": text
-        }, timeout = 30
-    )
